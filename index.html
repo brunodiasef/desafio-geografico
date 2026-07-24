@@ -944,7 +944,7 @@
 
     if(p.mapaConfig){ mostrarMapa(p.mapaConfig.svg); }
     if(p.bandeiraConfig){
-      containerBandeira.appendChild(p.bandeiraConfig.svg);
+      containerBandeira.appendChild(p.bandeiraConfig.elemento);
       containerBandeira.classList.remove('escondido');
     }
 
@@ -1093,6 +1093,17 @@
   }
 
   /* ================= INICIALIZAÇÃO DOS MODOS ================= */
+  function criarElementoBandeira(nomePais){
+    if(typeof BANDEIRAS_IMG !== 'undefined' && BANDEIRAS_IMG[nomePais]){
+      const img = document.createElement('img');
+      img.src = BANDEIRAS_IMG[nomePais];
+      img.alt = 'Bandeira de ' + nomePais;
+      img.style.cssText = 'width:100%; height:auto; display:block; border:2px solid rgba(255,255,255,0.4); border-radius:6px; box-shadow:0 3px 10px rgba(0,0,0,0.3);';
+      return img;
+    }
+    return criarBandeiraSVG(BANDEIRAS_SPEC[nomePais]);
+  }
+
   function iniciarModoBandeiras(){
     TEMPO_POR_PERGUNTA = 15000;
     const paisesComBandeira = PAISES.filter(p => BANDEIRAS_SPEC[p.nome]);
@@ -1100,13 +1111,13 @@
     const perguntas = pool.map(pais => {
       const distratores = embaralhar(paisesComBandeira.filter(p=>p.nome!==pais.nome)).slice(0,3).map(p=>p.nome);
       const opcoes = embaralhar([pais.nome, ...distratores]);
-      const svgBandeira = criarBandeiraSVG(BANDEIRAS_SPEC[pais.nome]);
+      const elementoBandeira = criarElementoBandeira(pais.nome);
       return {
         tipo:'multipla',
         enunciado: 'Qual país tem esta bandeira?',
         opcoes, correta: opcoes.indexOf(pais.nome),
         explicacao: `Essa é a bandeira d${pais.nome.match(/^[AEIOU]/i)?'o':'o'} ${pais.nome}. Capital: ${pais.capital}.`,
-        bandeiraConfig: { svg: svgBandeira }
+        bandeiraConfig: { elemento: elementoBandeira }
       };
     });
     iniciarRodada(perguntas);
