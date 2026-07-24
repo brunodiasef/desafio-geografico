@@ -1,5 +1,5 @@
 // Service Worker - Desafio Geográfico
-const CACHE_NOME = 'desafio-geo-cache-v1';
+const CACHE_NOME = 'desafio-geo-cache-v2';
 const ARQUIVOS_PARA_CACHE = [
   './',
   './index.html',
@@ -27,15 +27,12 @@ self.addEventListener('activate', (evento) => {
 
 self.addEventListener('fetch', (evento) => {
   evento.respondWith(
-    caches.match(evento.request).then((respostaEmCache) => {
-      if (respostaEmCache) return respostaEmCache;
-      return fetch(evento.request)
-        .then((respostaDaRede) => {
-          const copia = respostaDaRede.clone();
-          caches.open(CACHE_NOME).then((cache) => cache.put(evento.request, copia));
-          return respostaDaRede;
-        })
-        .catch(() => caches.match('./index.html'));
-    })
+    fetch(evento.request)
+      .then((respostaDaRede) => {
+        const copia = respostaDaRede.clone();
+        caches.open(CACHE_NOME).then((cache) => cache.put(evento.request, copia));
+        return respostaDaRede;
+      })
+      .catch(() => caches.match(evento.request).then((r) => r || caches.match('./index.html')))
   );
 });
