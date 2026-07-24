@@ -207,6 +207,11 @@
     border-radius:16px; padding:10px; margin-bottom:14px;
   }
   .container-mapa svg{ width:100%; height:auto; display:block; }
+
+  .container-bandeira{
+    width:100%; display:flex; justify-content:center; margin-bottom:14px;
+  }
+  .container-bandeira svg{ width: min(220px, 60vw); height:auto; display:block; }
   .continente-forma{ fill:var(--verde); stroke:rgba(255,255,255,0.5); stroke-width:2; cursor:default; transition:fill .2s ease; }
   .continente-forma.clicavel{ cursor:pointer; }
   .continente-forma.clicavel:hover{ fill:var(--amarelo); }
@@ -384,6 +389,7 @@
     <div class="barra-cronometro" id="barra-cronometro"><div class="barra-cronometro-preenchimento" id="barra-cronometro-preenchimento"></div></div>
 
     <div class="container-mapa escondido" id="container-mapa"></div>
+    <div class="container-bandeira escondido" id="container-bandeira"></div>
 
     <div class="cartao-pergunta">
       <div class="enunciado-geo" id="enunciado-geo"></div>
@@ -674,6 +680,7 @@
   /* ================= MAPA SVG ================= */
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const containerMapa = document.getElementById('container-mapa');
+  const containerBandeira = document.getElementById('container-bandeira');
 
   function criarElementoSVG(tag, atributos){
     const el = document.createElementNS(SVG_NS, tag);
@@ -763,6 +770,131 @@
   function limparMapa(){ containerMapa.innerHTML = ''; containerMapa.classList.add('escondido'); }
   function mostrarMapa(svg){ containerMapa.innerHTML=''; containerMapa.appendChild(svg); containerMapa.classList.remove('escondido'); }
 
+  /* ================= BANDEIRAS EM SVG (substitui emoji, que não renderiza em todo aparelho) ================= */
+  function pontosTriangulo(cx,cy,r,rotDeg){
+    const pontos=[];
+    for(let i=0;i<3;i++){
+      const ang = (rotDeg + i*120 - 90) * Math.PI/180;
+      pontos.push(`${cx+r*Math.cos(ang)},${cy+r*Math.sin(ang)}`);
+    }
+    return pontos.join(' ');
+  }
+  function elementoEstrela(cx,cy,r,cor){
+    const pontos=[];
+    for(let i=0;i<10;i++){
+      const raio = i%2===0 ? r : r*0.4;
+      const ang = (i*36-90)*Math.PI/180;
+      pontos.push(`${cx+raio*Math.cos(ang)},${cy+raio*Math.sin(ang)}`);
+    }
+    return criarElementoSVG('polygon', { points: pontos.join(' '), fill: cor });
+  }
+
+  function criarBandeiraSVG(spec, w, h){
+    w = w || 150; h = h || 100;
+    const svg = criarElementoSVG('svg', { viewBox:`0 0 ${w} ${h}`, width:w, height:h });
+
+    svg.appendChild(criarElementoSVG('rect', { x:0, y:0, width:w, height:h, fill:'#e8e8e8' }));
+
+    if(spec.base.tipo === 'campo'){
+      svg.appendChild(criarElementoSVG('rect', { x:0, y:0, width:w, height:h, fill:spec.base.cor }));
+    } else if(spec.base.tipo === 'faixas'){
+      const cores = spec.base.cores;
+      const pesos = spec.base.pesos || cores.map(()=>1);
+      const total = pesos.reduce((a,b)=>a+b,0);
+      let pos = 0;
+      cores.forEach((cor,i) => {
+        const tamanho = (pesos[i]/total) * (spec.base.direcao==='h' ? h : w);
+        if(spec.base.direcao==='h') svg.appendChild(criarElementoSVG('rect', { x:0, y:pos, width:w, height:tamanho, fill:cor }));
+        else svg.appendChild(criarElementoSVG('rect', { x:pos, y:0, width:tamanho, height:h, fill:cor }));
+        pos += tamanho;
+      });
+    }
+
+    if(spec.canto){
+      const cw = w*spec.canto.wPct, ch = h*spec.canto.hPct;
+      svg.appendChild(criarElementoSVG('rect', { x:0, y:0, width:cw, height:ch, fill:spec.canto.cor }));
+      if(spec.canto.cruz){
+        svg.appendChild(criarElementoSVG('line', { x1:0, y1:ch/2, x2:cw, y2:ch/2, stroke:'#FFFFFF', 'stroke-width':Math.max(2,ch*0.14) }));
+        svg.appendChild(criarElementoSVG('line', { x1:cw/2, y1:0, x2:cw/2, y2:ch, stroke:'#FFFFFF', 'stroke-width':Math.max(2,cw*0.14) }));
+      }
+      if(spec.canto.estrelas){
+        const n = spec.canto.estrelas, cols = Math.max(1,Math.ceil(Math.sqrt(n)));
+        for(let i=0;i<n;i++){
+          const cx2 = cw*(0.18 + (i%cols)*(0.64/Math.max(1,cols-1||1)));
+          const cy2 = ch*(0.22 + Math.floor(i/cols)*(0.56/Math.max(1,Math.ceil(n/cols)-1||1)));
+          svg.appendChild(criarElementoSVG('circle', { cx:cx2, cy:cy2, r:Math.min(cw,ch)*0.07, fill:'#FFFFFF' }));
+        }
+      }
+    }
+
+    if(spec.simbolo){
+      const cx=w/2, cy=h/2, s=spec.simbolo, dim=Math.min(w,h);
+      if(s.tipo==='circulo'){
+        svg.appendChild(criarElementoSVG('circle', { cx, cy, r:dim*(s.r||0.15), fill:s.cor }));
+      } else if(s.tipo==='cruz'){
+        const esp = h*0.22;
+        svg.appendChild(criarElementoSVG('rect', { x:0, y:cy-esp/2, width:w, height:esp, fill:s.cor }));
+        svg.appendChild(criarElementoSVG('rect', { x:w*0.32, y:0, width:esp*0.9, height:h, fill:s.cor }));
+      } else if(s.tipo==='losangoCirculo'){
+        const pts = `${cx},${cy-h*0.32} ${cx+w*0.26},${cy} ${cx},${cy+h*0.32} ${cx-w*0.26},${cy}`;
+        svg.appendChild(criarElementoSVG('polygon', { points:pts, fill:s.cor }));
+        svg.appendChild(criarElementoSVG('circle', { cx, cy, r:dim*0.14, fill:s.cor2 }));
+      } else if(s.tipo==='sol'){
+        svg.appendChild(criarElementoSVG('circle', { cx, cy, r:dim*0.13, fill:s.cor }));
+        for(let i=0;i<12;i++){
+          const ang = i*Math.PI/6;
+          svg.appendChild(criarElementoSVG('line', {
+            x1:cx+Math.cos(ang)*dim*0.15, y1:cy+Math.sin(ang)*dim*0.15,
+            x2:cx+Math.cos(ang)*dim*0.22, y2:cy+Math.sin(ang)*dim*0.22,
+            stroke:s.cor, 'stroke-width':2
+          }));
+        }
+      } else if(s.tipo==='estrela5'){
+        svg.appendChild(elementoEstrela(cx, cy, dim*0.12, s.cor));
+      } else if(s.tipo==='estrelasPequenas'){
+        for(let i=0;i<5;i++){
+          svg.appendChild(elementoEstrela(w*(0.28+(i%3)*0.22), h*(0.3+Math.floor(i/3)*0.35), dim*0.055, s.cor));
+        }
+      } else if(s.tipo==='estrelasVermelhas'){
+        for(let i=0;i<4;i++){
+          svg.appendChild(elementoEstrela(w*(0.55+(i%2)*0.18), h*(0.25+Math.floor(i/2)*0.35), dim*0.05, s.cor));
+        }
+      } else if(s.tipo==='crescenteEstrela'){
+        svg.appendChild(criarElementoSVG('circle', { cx:cx-dim*0.04, cy, r:dim*0.16, fill:s.cor }));
+        svg.appendChild(criarElementoSVG('circle', { cx:cx+dim*0.035, cy, r:dim*0.13, fill:(spec.base.tipo==='campo'?spec.base.cor:'#FFFFFF') }));
+        svg.appendChild(elementoEstrela(cx+dim*0.2, cy, dim*0.05, s.cor));
+      } else if(s.tipo==='taegeuk'){
+        svg.appendChild(criarElementoSVG('circle', { cx, cy, r:dim*0.16, fill:s.cor2 }));
+        svg.appendChild(criarElementoSVG('path', { d:`M ${cx} ${cy-dim*0.16} A ${dim*0.08} ${dim*0.08} 0 0 1 ${cx} ${cy} A ${dim*0.08} ${dim*0.08} 0 0 0 ${cx} ${cy+dim*0.16} A ${dim*0.16} ${dim*0.16} 0 0 0 ${cx} ${cy-dim*0.16} Z`, fill:s.cor }));
+      } else if(s.tipo==='davi'){
+        const r = dim*0.16;
+        svg.appendChild(criarElementoSVG('polygon', { points:pontosTriangulo(cx,cy,r,0), fill:'none', stroke:s.cor, 'stroke-width':2 }));
+        svg.appendChild(criarElementoSVG('polygon', { points:pontosTriangulo(cx,cy,r,180), fill:'none', stroke:s.cor, 'stroke-width':2 }));
+      } else if(s.tipo==='folha'){
+        svg.appendChild(criarElementoSVG('circle', { cx, cy, r:dim*0.13, fill:s.cor }));
+      } else if(s.tipo==='escudo'){
+        svg.appendChild(criarElementoSVG('rect', { x:cx-dim*0.08, y:cy-dim*0.11, width:dim*0.16, height:dim*0.18, rx:3, fill:s.cor }));
+      } else if(s.tipo==='trianguloEstrela'){
+        svg.appendChild(criarElementoSVG('polygon', { points:`0,0 ${w*0.4},${h/2} 0,${h}`, fill:s.cor }));
+        svg.appendChild(elementoEstrela(w*0.15, h/2, dim*0.06, s.cor2));
+      } else if(s.tipo==='unionjack'){
+        svg.appendChild(criarElementoSVG('line', { x1:0,y1:0,x2:w,y2:h, stroke:'#FFFFFF', 'stroke-width':h*0.16 }));
+        svg.appendChild(criarElementoSVG('line', { x1:w,y1:0,x2:0,y2:h, stroke:'#FFFFFF', 'stroke-width':h*0.16 }));
+        svg.appendChild(criarElementoSVG('line', { x1:0,y1:0,x2:w,y2:h, stroke:s.cor2, 'stroke-width':h*0.07 }));
+        svg.appendChild(criarElementoSVG('line', { x1:w,y1:0,x2:0,y2:h, stroke:s.cor2, 'stroke-width':h*0.07 }));
+        svg.appendChild(criarElementoSVG('rect', { x:0, y:h*0.4, width:w, height:h*0.2, fill:s.cor }));
+        svg.appendChild(criarElementoSVG('rect', { x:w*0.42, y:0, width:w*0.16, height:h, fill:s.cor }));
+        svg.appendChild(criarElementoSVG('rect', { x:0, y:h*0.44, width:w, height:h*0.12, fill:s.cor2 }));
+        svg.appendChild(criarElementoSVG('rect', { x:w*0.45, y:0, width:w*0.1, height:h, fill:s.cor2 }));
+      } else if(s.tipo==='faixaHorizontal'){
+        svg.appendChild(criarElementoSVG('rect', { x:w*0.15, y:h*0.42, width:w*0.7, height:h*0.16, fill:s.cor }));
+      }
+    }
+
+    svg.setAttribute('style', 'display:block; border:2px solid rgba(255,255,255,0.4); border-radius:6px; box-shadow:0 3px 10px rgba(0,0,0,0.3); margin: 0 auto;');
+    return svg;
+  }
+
   /* ================= FLUXO GERAL DE PERGUNTAS ================= */
   function prepararTelaJogo(){
     esconderTodasAsTelas();
@@ -791,6 +923,8 @@
     vfBotoesEl.classList.add('escondido');
     areaArrastarEl.classList.add('escondido');
     limparMapa();
+    containerBandeira.innerHTML = '';
+    containerBandeira.classList.add('escondido');
 
     if(p.tipo === 'mapa-clique'){
       const svg = construirMapaSVG({
@@ -809,6 +943,10 @@
     }
 
     if(p.mapaConfig){ mostrarMapa(p.mapaConfig.svg); }
+    if(p.bandeiraConfig){
+      containerBandeira.appendChild(p.bandeiraConfig.svg);
+      containerBandeira.classList.remove('escondido');
+    }
 
     if(p.tipo === 'vf'){
       vfBotoesEl.classList.remove('escondido');
@@ -957,15 +1095,18 @@
   /* ================= INICIALIZAÇÃO DOS MODOS ================= */
   function iniciarModoBandeiras(){
     TEMPO_POR_PERGUNTA = 15000;
-    const pool = embaralhar(PAISES).slice(0, 8);
+    const paisesComBandeira = PAISES.filter(p => BANDEIRAS_SPEC[p.nome]);
+    const pool = embaralhar(paisesComBandeira).slice(0, 8);
     const perguntas = pool.map(pais => {
-      const distratores = embaralhar(PAISES.filter(p=>p.nome!==pais.nome)).slice(0,3).map(p=>p.nome);
+      const distratores = embaralhar(paisesComBandeira.filter(p=>p.nome!==pais.nome)).slice(0,3).map(p=>p.nome);
       const opcoes = embaralhar([pais.nome, ...distratores]);
+      const svgBandeira = criarBandeiraSVG(BANDEIRAS_SPEC[pais.nome]);
       return {
         tipo:'multipla',
-        enunciado: `Qual país tem esta bandeira?  ${pais.bandeira}`,
+        enunciado: 'Qual país tem esta bandeira?',
         opcoes, correta: opcoes.indexOf(pais.nome),
-        explicacao: `Essa é a bandeira d${pais.nome.match(/^[AEIOU]/i)?'o':'o'} ${pais.nome}. Capital: ${pais.capital}.`
+        explicacao: `Essa é a bandeira d${pais.nome.match(/^[AEIOU]/i)?'o':'o'} ${pais.nome}. Capital: ${pais.capital}.`,
+        bandeiraConfig: { svg: svgBandeira }
       };
     });
     iniciarRodada(perguntas);
