@@ -212,10 +212,10 @@
     width:100%; display:flex; justify-content:center; margin-bottom:14px;
   }
   .container-bandeira svg{ width: min(220px, 60vw); height:auto; display:block; }
-  .continente-forma{ fill:var(--verde); stroke:rgba(255,255,255,0.5); stroke-width:2; cursor:default; transition:fill .2s ease; }
+  .continente-forma{ fill:transparent; stroke:none; cursor:default; transition:fill .2s ease; }
   .continente-forma.clicavel{ cursor:pointer; }
-  .continente-forma.clicavel:hover{ fill:var(--amarelo); }
-  .continente-forma.selecionada{ fill:var(--amarelo); }
+  .continente-forma.clicavel:hover{ fill:rgba(255,201,60,0.28); }
+  .continente-forma.selecionada{ fill:rgba(46,204,113,0.4); stroke:#2ecc71; stroke-width:3; }
   .rotulo-continente{ font-size:15px; font-weight:800; fill:rgba(255,255,255,0.9); pointer-events:none; text-anchor:middle; }
 
   .marcador-pais{ fill:var(--amarelo); stroke:var(--azul-escuro); stroke-width:2; }
@@ -677,7 +677,7 @@
     return decorrido < tempoMs * 0.5;
   }
 
-  /* ================= MAPA SVG ================= */
+  /* ================= MAPA (imagens reais) ================= */
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const containerMapa = document.getElementById('container-mapa');
   const containerBandeira = document.getElementById('container-bandeira');
@@ -688,49 +688,56 @@
     return el;
   }
 
-  // Constrói o mapa-múndi completo (todas as formas de continente).
-  // opcoes: { clicavel:bool, aoClicarContinente:fn, continenteAtivo:chave|null, viewBoxZoom:chave|null }
+  // Regiões clicáveis aproximadas de cada continente sobre a imagem do mapa-múndi (frações 0-1 de largura/altura)
+  const REGIOES_MUNDI = {
+    'america-norte': { x:0.00, y:0.00, w:0.42, h:0.50 },
+    'america-sul':   { x:0.13, y:0.50, w:0.29, h:0.50 },
+    'europa':        { x:0.43, y:0.00, w:0.22, h:0.39 },
+    'africa':        { x:0.42, y:0.33, w:0.21, h:0.55 },
+    'asia':          { x:0.59, y:0.00, w:0.41, h:0.59 },
+    'oceania':       { x:0.78, y:0.56, w:0.22, h:0.44 }
+  };
+
+  // Constrói o mapa exibido no jogo.
+  // opcoes: { clicavel:bool, aoClicarContinente:fn } -> mapa-múndi clicável
+  //         { viewBoxZoom:chave } -> mapa real daquele continente, em tamanho cheio
   function construirMapaSVG(opcoes){
     opcoes = opcoes || {};
-    const svg = criarElementoSVG('svg', { viewBox: '0 0 1200 600' });
-
-    const fundo = criarElementoSVG('rect', { x:0, y:0, width:1200, height:600, fill:'rgba(21,101,192,0.35)', rx:14 });
-    svg.appendChild(fundo);
-
-    CONTINENTES_ORDEM.forEach(chave => {
-      const c = CONTINENTES[chave];
-      const path = criarElementoSVG('path', { d: c.path, class: 'continente-forma' });
-      if(opcoes.clicavel){
-        path.classList.add('clicavel');
-        path.addEventListener('click', () => opcoes.aoClicarContinente(chave));
-      }
-      if(opcoes.continenteAtivo === chave){
-        path.classList.add('selecionada');
-      } else if(opcoes.continenteAtivo && opcoes.esmaecerOutros){
-        path.setAttribute('opacity', '0.35');
-      }
-      svg.appendChild(path);
-
-      const rotulo = criarElementoSVG('text', { x:c.cx, y:c.cy, class:'rotulo-continente' });
-      rotulo.textContent = opcoes.mostrarRotulosContinente ? c.nome : '';
-      svg.appendChild(rotulo);
-    });
 
     if(opcoes.viewBoxZoom){
-      const c = CONTINENTES[opcoes.viewBoxZoom];
-      // usa o bounding box aproximado do continente (baseado nos raios usados na geração)
-      const raios = {
-        'america-norte':[150,110], 'america-sul':[110,140], 'europa':[95,70],
-        'africa':[130,150], 'asia':[220,130], 'oceania':[110,80]
-      };
-      const [rx, ry] = raios[opcoes.viewBoxZoom];
-      const margem = 1.5;
-      const vx = Math.max(0, c.cx - rx*margem);
-      const vy = Math.max(0, c.cy - ry*margem);
-      const vw = Math.min(1200 - vx, rx*margem*2);
-      const vh = Math.min(600 - vy, ry*margem*2);
-      svg.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`);
+      const dim = MAPA_DIMENSOES[opcoes.viewBoxZoom];
+      const svg = criarElementoSVG('svg', { viewBox: `0 0 ${dim.w} ${dim.h}` });
+      const imagem = criarElementoSVG('image', {
+        href: MAPAS_IMG[opcoes.viewBoxZoom], x:0, y:0, width:dim.w, height:dim.h,
+        preserveAspectRatio:'xMidYMid meet'
+      });
+      svg.appendChild(imagem);
+      return svg;
     }
+
+    // modo mapa-múndi (localizar continentes)
+    const dim = MAPA_DIMENSOES.mundi;
+    const svg = criarElementoSVG('svg', { viewBox: `0 0 ${dim.w} ${dim.h}` });
+    const imagem = criarElementoSVG('image', {
+      href: MAPAS_IMG.mundi, x:0, y:0, width:dim.w, height:dim.h, preserveAspectRatio:'xMidYMid meet'
+    });
+    svg.appendChild(imagem);
+
+    CONTINENTES_ORDEM.forEach(chave => {
+      const r = REGIOES_MUNDI[chave];
+      const retangulo = criarElementoSVG('rect', {
+        x: r.x*dim.w, y: r.y*dim.h, width: r.w*dim.w, height: r.h*dim.h,
+        class: 'continente-forma', fill:'transparent'
+      });
+      if(opcoes.clicavel){
+        retangulo.classList.add('clicavel');
+        retangulo.addEventListener('click', () => opcoes.aoClicarContinente(chave));
+      }
+      if(opcoes.continenteAtivo === chave){
+        retangulo.classList.add('selecionada');
+      }
+      svg.appendChild(retangulo);
+    });
 
     return svg;
   }
@@ -1016,7 +1023,7 @@
     if(paths[idx]) paths[idx].classList.add('selecionada');
     if(chaveClicada && chaveClicada !== p.correta){
       const idxErrado = CONTINENTES_ORDEM.indexOf(chaveClicada);
-      if(paths[idxErrado]) paths[idxErrado].style.fill = '#e74c3c';
+      if(paths[idxErrado]) paths[idxErrado].style.fill = 'rgba(231,76,60,0.45)';
     }
     registrarResposta(correta, false);
     const exp = document.getElementById('explicacao-geo');
