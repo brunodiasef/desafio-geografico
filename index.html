@@ -343,11 +343,6 @@
         <div class="nome-desafio">Localizar Continentes</div>
         <div class="desc-desafio">Toque no continente correto dentro do mapa-múndi.</div>
       </button>
-      <button class="card-desafio" id="btn-modo-completar">
-        <span class="emoji-desafio">🧩</span>
-        <div class="nome-desafio">Completar Mapas</div>
-        <div class="desc-desafio">Descubra qual país está faltando no mapa parcialmente preenchido.</div>
-      </button>
       <button class="card-desafio" id="btn-modo-vf">
         <span class="emoji-desafio">✅</span>
         <div class="nome-desafio">Verdadeiro ou Falso</div>
@@ -588,7 +583,6 @@
   /* ================= ROTEAMENTO DOS CARDS DO MENU ================= */
   document.getElementById('btn-modo-destaque').addEventListener('click', () => { modoAtual='destaque'; irParaTelaContinente(); });
   document.getElementById('btn-modo-arrastar').addEventListener('click', () => { modoAtual='arrastar'; irParaTelaContinente(); });
-  document.getElementById('btn-modo-completar').addEventListener('click', () => { modoAtual='completar'; irParaTelaContinente(); });
   document.getElementById('btn-modo-bandeiras').addEventListener('click', () => { modoAtual='bandeiras'; iniciarModoBandeiras(); });
   document.getElementById('btn-modo-continentes').addEventListener('click', () => { modoAtual='continentes'; iniciarModoLocalizarContinentes(); });
   document.getElementById('btn-modo-vf').addEventListener('click', () => { modoAtual='vf'; esconderTodasAsTelas(); document.getElementById('tela-categoria-vf').classList.remove('escondido'); });
@@ -601,7 +595,6 @@
   function iniciarModoComContinente(){
     if(modoAtual === 'destaque') iniciarModoDestaque();
     else if(modoAtual === 'arrastar') iniciarModoArrastar();
-    else if(modoAtual === 'completar') iniciarModoCompletar();
   }
 
   /* ================= UTILITÁRIOS DE PONTUAÇÃO / PLACAR ================= */
@@ -1155,34 +1148,6 @@
     iniciarRodada(perguntas);
   }
 
-  function iniciarModoCompletar(){
-    TEMPO_POR_PERGUNTA = 15000;
-    const paisesContinente = PAISES.filter(p=>p.continente===continenteAtual);
-    if(paisesContinente.length < 4){ irParaMenu(); return; }
-    const qtd = Math.min(6, paisesContinente.length);
-    const escolhidos = embaralhar(paisesContinente).slice(0, qtd);
-    const perguntas = escolhidos.map(pais => {
-      const outros = paisesContinente.filter(p=>p.nome!==pais.nome);
-      let distratores = embaralhar(outros).slice(0,3).map(p=>p.nome);
-      while(distratores.length<3){
-        const extra = embaralhar(PAISES.filter(p=>p.nome!==pais.nome && !distratores.includes(p.nome)))[0];
-        distratores.push(extra.nome);
-      }
-      const opcoes = embaralhar([pais.nome, ...distratores]);
-      const svg = construirMapaSVG({ viewBoxZoom: continenteAtual });
-      paisesContinente.forEach(p => {
-        if(p.nome === pais.nome) adicionarMarcadorPais(svg, p, { alvo:true });
-        else adicionarMarcadorPais(svg, p, { mostrarRotulo:true });
-      });
-      return {
-        tipo:'multipla', enunciado:'Qual país está faltando no mapa (círculo tracejado)?',
-        opcoes, correta: opcoes.indexOf(pais.nome),
-        explicacao: `O país que faltava era ${pais.nome}.`,
-        mapaConfig:{svg}
-      };
-    });
-    iniciarRodada(perguntas);
-  }
 
   function iniciarModoArrastar(){
     TEMPO_POR_PERGUNTA = 15000;
@@ -1291,7 +1256,6 @@
   document.getElementById('btn-resultado-menu').addEventListener('click', irParaMenu);
   document.getElementById('btn-jogar-novamente').addEventListener('click', () => {
     if(modoAtual==='destaque') iniciarModoDestaque();
-    else if(modoAtual==='completar') iniciarModoCompletar();
     else if(modoAtual==='arrastar') iniciarModoArrastar();
     else if(modoAtual==='bandeiras') iniciarModoBandeiras();
     else if(modoAtual==='continentes') iniciarModoLocalizarContinentes();
