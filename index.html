@@ -1393,8 +1393,32 @@
     const gx = Math.round(xContorno * (GABARITO_SUL_INFO.largura / pintarCanvasEl.width));
     const gy = Math.round(yContorno * (GABARITO_SUL_INFO.altura / pintarCanvasEl.height));
     if(gx<0||gy<0||gx>=GABARITO_SUL_INFO.largura||gy>=GABARITO_SUL_INFO.altura) return null;
-    const dado = pintarCtxGabarito.getImageData(gx, gy, 1, 1).data;
-    return [dado[0], dado[1], dado[2]];
+    return [gx, gy];
+  }
+
+  function paisNoPontoGabarito(gx, gy){
+    // procura numa area ao redor do ponto (nao so o pixel exato), pra tolerar pequeno desalinhamento
+    // entre o mapa de contorno e o mapa-gabarito. Pontos mais proximos do clique pesam mais,
+    // o que ajuda em paises bem finos (como o Chile) a nao "vazar" pro vizinho.
+    const RAIO = 7, PASSO = 2;
+    const pesos = {};
+    for(let dx=-RAIO; dx<=RAIO; dx+=PASSO){
+      for(let dy=-RAIO; dy<=RAIO; dy+=PASSO){
+        const x = gx+dx, y = gy+dy;
+        if(x<0||y<0||x>=GABARITO_SUL_INFO.largura||y>=GABARITO_SUL_INFO.altura) continue;
+        const d = pintarCtxGabarito.getImageData(x, y, 1, 1).data;
+        const nome = paisNaCorGabarito([d[0], d[1], d[2]]);
+        if(nome){
+          const peso = 1 / (1 + Math.sqrt(dx*dx+dy*dy));
+          pesos[nome] = (pesos[nome]||0) + peso;
+        }
+      }
+    }
+    let melhorNome = null, melhorPeso = 0;
+    Object.keys(pesos).forEach(nome => {
+      if(pesos[nome] > melhorPeso){ melhorPeso = pesos[nome]; melhorNome = nome; }
+    });
+    return melhorNome;
   }
 
   function paisNaCorGabarito(cor){
@@ -1479,8 +1503,8 @@
     const x = Math.round((evento.clientX - rect.left) * escalaX);
     const y = Math.round((evento.clientY - rect.top) * escalaY);
 
-    const cor = corDoGabaritoEm(x, y);
-    const paisClicado = paisNaCorGabarito(cor);
+    const pontoGabarito = corDoGabaritoEm(x, y);
+    const paisClicado = pontoGabarito ? paisNoPontoGabarito(pontoGabarito[0], pontoGabarito[1]) : null;
     const preencheu = floodFillPintar(x, y, pintarCorAtual.hex);
     if(!preencheu) return;
 
