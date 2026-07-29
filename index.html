@@ -1397,10 +1397,7 @@
   }
 
   function paisNoPontoGabarito(gx, gy){
-    // procura numa area ao redor do ponto (nao so o pixel exato), pra tolerar pequeno desalinhamento
-    // entre o mapa de contorno e o mapa-gabarito. Pontos mais proximos do clique pesam mais,
-    // o que ajuda em paises bem finos (como o Chile) a nao "vazar" pro vizinho.
-    const RAIO = 7, PASSO = 2;
+    const RAIO = 4, PASSO = 2;
     const pesos = {};
     for(let dx=-RAIO; dx<=RAIO; dx+=PASSO){
       for(let dy=-RAIO; dy<=RAIO; dy+=PASSO){
