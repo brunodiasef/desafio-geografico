@@ -240,6 +240,7 @@
 
   /* ---------- Resultado ---------- */
   .resultado-medalha{ font-size:80px; margin-bottom:6px; text-align:center; }
+  .resultado-medalha img{ width:140px; height:140px; border-radius:50%; display:block; margin:0 auto; }
   .resultado-titulo{ font-family:var(--fonte-titulo); font-size:clamp(20px,4.5vw,28px); text-align:center; color:var(--amarelo); margin-bottom:6px; }
   .resultado-stats{
     display:grid; grid-template-columns:repeat(2,1fr); gap:10px 24px; max-width:380px; margin:14px auto 20px;
@@ -251,6 +252,26 @@
 
   /* ---------- Ranking ---------- */
   .lista-ranking{ width:100%; max-width:520px; display:flex; flex-direction:column; gap:8px; }
+
+  /* ---------- PINTE O MAPA ---------- */
+  .placar-pintar{ font-weight:800; color:var(--amarelo); }
+  .cartao-pintar{
+    background: rgba(0,0,0,0.25); border: 2px solid var(--linha); border-radius: 16px;
+    padding: 20px; max-width: 460px; width:100%; display:flex; flex-direction:column; align-items:center; gap:14px;
+  }
+  .pintar-instrucao{ font-size:16px; text-align:center; color:var(--giz); }
+  .pintar-instrucao b{ color:var(--amarelo); }
+  .pintar-amostra-cor{
+    display:inline-block; width:18px; height:18px; border-radius:50%; vertical-align:middle;
+    border:2px solid rgba(255,255,255,0.6); margin:0 3px;
+  }
+  .pintar-canvas-wrap{ position:relative; width:100%; display:flex; justify-content:center; }
+  #pintar-canvas{ width:100%; max-width:380px; height:auto; cursor:pointer; background:#fff; border-radius:8px; touch-action:manipulation; }
+  .pintar-feedback{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-size:64px; opacity:0; pointer-events:none; transition:opacity .15s ease, transform .15s ease;
+  }
+  .pintar-feedback.mostrar{ opacity:1; transform:translate(-50%,-50%) scale(1.15); }
   .item-ranking{
     display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.1); border:1px solid var(--linha);
     border-radius:12px; padding:10px 14px; font-size:13.5px;
@@ -353,6 +374,11 @@
         <div class="nome-desafio">Quiz Relâmpago</div>
         <div class="desc-desafio">Perguntas de todas as categorias, com tempo reduzido para responder.</div>
       </button>
+      <button class="card-desafio" id="btn-modo-pintar">
+        <span class="emoji-desafio">🎨</span>
+        <div class="nome-desafio">Pinte o Mapa</div>
+        <div class="desc-desafio">Clique no país certo do mapa da América do Sul e pinte-o da cor pedida.</div>
+      </button>
     </div>
   </section>
 
@@ -419,6 +445,34 @@
     <div class="barra-topo"><div></div><button class="btn secundario" id="btn-voltar-menu-3">Voltar ao Menu</button></div>
     <h2 style="font-family:var(--fonte-titulo); color:var(--amarelo); margin-bottom:14px;">🏆 Melhores Jogadores</h2>
     <div class="lista-ranking" id="lista-ranking"></div>
+  </section>
+
+  <section id="tela-pintar" class="escondido">
+    <div class="barra-topo">
+      <div class="placar-pintar">Acertos: <b id="pintar-acertos">0</b>/<b id="pintar-total">0</b></div>
+      <button class="btn secundario" id="btn-voltar-menu-pintar">Voltar</button>
+    </div>
+    <div class="cartao-pintar">
+      <div class="pintar-instrucao">
+        Pinte <b id="pintar-nome-pais">...</b> de
+        <span class="pintar-amostra-cor" id="pintar-amostra-cor"></span>
+        <b id="pintar-nome-cor">...</b>
+      </div>
+      <div class="pintar-canvas-wrap">
+        <canvas id="pintar-canvas"></canvas>
+        <div class="pintar-feedback" id="pintar-feedback"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tela-vitoria-pintar" class="vitoria escondido">
+    <div class="resultado-medalha" id="pintar-vitoria-medalha">🏆</div>
+    <h2>Mapa concluído!</h2>
+    <p id="pintar-vitoria-texto"></p>
+    <div class="btns">
+      <button class="btn" id="btn-pintar-de-novo">Jogar novamente</button>
+      <button class="btn secundario" id="btn-menu-pintar-fim">Menu principal</button>
+    </div>
   </section>
 
   <footer class="rodape-geo">Criado por: <b>Professor Bruno Dias de Oliveira</b></footer>
@@ -507,7 +561,7 @@
   }
 
   function esconderTodasAsTelas(){
-    ['tela-nome','tela-menu-principal','tela-continente','tela-categoria-vf','tela-jogo','tela-resultado','tela-ranking']
+    ['tela-nome','tela-menu-principal','tela-continente','tela-categoria-vf','tela-jogo','tela-resultado','tela-ranking','tela-pintar','tela-vitoria-pintar']
       .forEach(id => document.getElementById(id).classList.add('escondido'));
   }
 
@@ -1204,14 +1258,8 @@
     tocarVitoria();
     const totalRespondidas = acertos + erros;
     const aproveitamento = totalRespondidas>0 ? Math.round((acertos/totalRespondidas)*100) : 0;
-    let medalha='🏅', nomeMedalha='Continue praticando!';
-    if(aproveitamento>=90){ medalha='💎'; nomeMedalha='Medalha de Diamante!'; }
-    else if(aproveitamento>=75){ medalha='🥇'; nomeMedalha='Medalha de Ouro!'; }
-    else if(aproveitamento>=55){ medalha='🥈'; nomeMedalha='Medalha de Prata!'; }
-    else if(aproveitamento>=35){ medalha='🥉'; nomeMedalha='Medalha de Bronze!'; }
-
-    document.getElementById('resultado-medalha').textContent = medalha;
-    document.getElementById('resultado-titulo').textContent = `${nomeAluno}, ${nomeMedalha}`;
+    document.getElementById('resultado-medalha').innerHTML = `<img src="${FOTO_MEDALHA}" alt="Professor Bruno Dias">`;
+    document.getElementById('resultado-titulo').textContent = `${nomeAluno}, NÓS TRUPICA MAIS NÃO CAI!!!`;
     document.getElementById('resultado-stats').innerHTML = `
       <div>Pontuação<b>${pontuacao}</b></div>
       <div>Acertos<b>${acertos}</b></div>
@@ -1265,6 +1313,194 @@
 
   document.getElementById('btn-vf-verdadeiro').addEventListener('click', () => responderPergunta(0));
   document.getElementById('btn-vf-falso').addEventListener('click', () => responderPergunta(1));
+
+  /* ================= PINTE O MAPA (América do Sul) ================= */
+  const PINTAR_CORES = [
+    { nome: 'Vermelho', hex: '#e74c3c' },
+    { nome: 'Azul', hex: '#3498db' },
+    { nome: 'Verde', hex: '#27ae60' },
+    { nome: 'Amarelo', hex: '#f1c40f' },
+    { nome: 'Roxo', hex: '#9b59b6' },
+    { nome: 'Laranja', hex: '#e67e22' },
+  ];
+
+  let pintarRodada = [];
+  let pintarIndice = 0;
+  let pintarAcertosCount = 0;
+  let pintarAlvoAtual = null;
+  let pintarCorAtual = null;
+  let pintarBloqueado = false;
+  let pintarCanvasEl, pintarCtx;
+  let pintarImgContorno = null;
+  let pintarCanvasGabarito, pintarCtxGabarito;
+
+  const pintarAcertosEl = document.getElementById('pintar-acertos');
+  const pintarTotalEl = document.getElementById('pintar-total');
+  const pintarNomePaisEl = document.getElementById('pintar-nome-pais');
+  const pintarNomeCorEl = document.getElementById('pintar-nome-cor');
+  const pintarAmostraCorEl = document.getElementById('pintar-amostra-cor');
+  const pintarFeedbackEl = document.getElementById('pintar-feedback');
+
+  function iniciarModoPintar(){
+    modoAtual = 'pintar';
+    pintarRodada = embaralhar(GABARITO_SUL_INFO.ordem).slice(0, 8);
+    pintarIndice = 0;
+    pintarAcertosCount = 0;
+    pintarTotalEl.textContent = pintarRodada.length;
+    pintarAcertosEl.textContent = '0';
+    esconderTodasAsTelas();
+    document.getElementById('tela-pintar').classList.remove('escondido');
+    prepararCanvasPintar();
+  }
+
+  function prepararCanvasPintar(){
+    pintarCanvasEl = document.getElementById('pintar-canvas');
+    pintarCtx = pintarCanvasEl.getContext('2d');
+    pintarCanvasGabarito = document.createElement('canvas');
+    pintarCtxGabarito = pintarCanvasGabarito.getContext('2d');
+
+    const imgContorno = new Image();
+    imgContorno.onload = () => {
+      pintarCanvasEl.width = imgContorno.naturalWidth;
+      pintarCanvasEl.height = imgContorno.naturalHeight;
+      pintarImgContorno = imgContorno;
+      pintarCtx.drawImage(imgContorno, 0, 0);
+
+      const imgGabarito = new Image();
+      imgGabarito.onload = () => {
+        pintarCanvasGabarito.width = GABARITO_SUL_INFO.largura;
+        pintarCanvasGabarito.height = GABARITO_SUL_INFO.altura;
+        pintarCtxGabarito.drawImage(imgGabarito, 0, 0);
+        mostrarProximaRodadaPintar();
+      };
+      imgGabarito.src = MAPA_GABARITO_SUL;
+    };
+    imgContorno.src = MAPA_CONTORNO_SUL;
+  }
+
+  function mostrarProximaRodadaPintar(){
+    pintarBloqueado = false;
+    pintarAlvoAtual = pintarRodada[pintarIndice];
+    pintarCorAtual = PINTAR_CORES[Math.floor(Math.random()*PINTAR_CORES.length)];
+    pintarNomePaisEl.textContent = pintarAlvoAtual;
+    pintarNomeCorEl.textContent = pintarCorAtual.nome;
+    pintarAmostraCorEl.style.background = pintarCorAtual.hex;
+    pintarCtx.clearRect(0,0,pintarCanvasEl.width, pintarCanvasEl.height);
+    pintarCtx.drawImage(pintarImgContorno, 0, 0);
+  }
+
+  function corDoGabaritoEm(xContorno, yContorno){
+    const gx = Math.round(xContorno * (GABARITO_SUL_INFO.largura / pintarCanvasEl.width));
+    const gy = Math.round(yContorno * (GABARITO_SUL_INFO.altura / pintarCanvasEl.height));
+    if(gx<0||gy<0||gx>=GABARITO_SUL_INFO.largura||gy>=GABARITO_SUL_INFO.altura) return null;
+    const dado = pintarCtxGabarito.getImageData(gx, gy, 1, 1).data;
+    return [dado[0], dado[1], dado[2]];
+  }
+
+  function paisNaCorGabarito(cor){
+    if(!cor) return null;
+    if(cor[0]>250 && cor[1]>250 && cor[2]>250) return null;
+    let melhorIdx = -1, melhorDist = Infinity;
+    GABARITO_SUL_INFO.cores.forEach((c, i) => {
+      const d = Math.pow(c[0]-cor[0],2)+Math.pow(c[1]-cor[1],2)+Math.pow(c[2]-cor[2],2);
+      if(d < melhorDist){ melhorDist = d; melhorIdx = i; }
+    });
+    if(melhorDist > 500) return null;
+    return GABARITO_SUL_INFO.ordem[melhorIdx];
+  }
+
+  function floodFillPintar(xIni, yIni, corHex){
+    const w = pintarCanvasEl.width, h = pintarCanvasEl.height;
+    const imgData = pintarCtx.getImageData(0,0,w,h);
+    const dados = imgData.data;
+    function idx(x,y){ return (y*w+x)*4; }
+    const i0 = idx(xIni, yIni);
+    const rOrig = dados[i0], gOrig = dados[i0+1], bOrig = dados[i0+2];
+    if(rOrig < 150 && gOrig < 150 && bOrig < 150) return false;
+
+    const corR = parseInt(corHex.slice(1,3),16), corG = parseInt(corHex.slice(3,5),16), corB = parseInt(corHex.slice(5,7),16);
+    function pareceOrigem(i){
+      const r=dados[i], g=dados[i+1], b=dados[i+2];
+      return Math.abs(r-rOrig)<30 && Math.abs(g-gOrig)<30 && Math.abs(b-bOrig)<30 && r>140;
+    }
+
+    const pilha = [[xIni,yIni]];
+    const visitado = new Uint8Array(w*h);
+    let contagem = 0;
+    const LIMITE = 260000;
+    while(pilha.length && contagem < LIMITE){
+      const [x,y] = pilha.pop();
+      if(x<0||y<0||x>=w||y>=h) continue;
+      const p = y*w+x;
+      if(visitado[p]) continue;
+      const i = p*4;
+      if(!pareceOrigem(i)) continue;
+      visitado[p] = 1;
+      dados[i]=corR; dados[i+1]=corG; dados[i+2]=corB; dados[i+3]=255;
+      contagem++;
+      pilha.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]);
+    }
+    pintarCtx.putImageData(imgData, 0, 0);
+    return true;
+  }
+
+  function mostrarFeedbackPintar(emoji){
+    pintarFeedbackEl.textContent = emoji;
+    pintarFeedbackEl.classList.add('mostrar');
+    setTimeout(() => pintarFeedbackEl.classList.remove('mostrar'), 650);
+  }
+
+  function avancarPintar(){
+    pintarIndice++;
+    if(pintarIndice < pintarRodada.length){
+      mostrarProximaRodadaPintar();
+    } else {
+      finalizarPintar();
+    }
+  }
+
+  function finalizarPintar(){
+    const total = pintarRodada.length;
+    const aproveitamento = Math.round((pintarAcertosCount/total)*100);
+    const medalhaEl = document.getElementById('pintar-vitoria-medalha');
+    if(aproveitamento>=75){ medalhaEl.textContent='🏆'; tocarVitoria(); }
+    else if(aproveitamento>=50){ medalhaEl.textContent='🥈'; }
+    else { medalhaEl.textContent='🥉'; }
+    document.getElementById('pintar-vitoria-texto').textContent = `Você acertou ${pintarAcertosCount} de ${total} países (${aproveitamento}%).`;
+    esconderTodasAsTelas();
+    document.getElementById('tela-vitoria-pintar').classList.remove('escondido');
+  }
+
+  document.getElementById('pintar-canvas').addEventListener('click', (evento) => {
+    if(pintarBloqueado || !pintarAlvoAtual) return;
+    const rect = pintarCanvasEl.getBoundingClientRect();
+    const escalaX = pintarCanvasEl.width / rect.width;
+    const escalaY = pintarCanvasEl.height / rect.height;
+    const x = Math.round((evento.clientX - rect.left) * escalaX);
+    const y = Math.round((evento.clientY - rect.top) * escalaY);
+
+    const cor = corDoGabaritoEm(x, y);
+    const paisClicado = paisNaCorGabarito(cor);
+    const preencheu = floodFillPintar(x, y, pintarCorAtual.hex);
+    if(!preencheu) return;
+
+    pintarBloqueado = true;
+    if(paisClicado === pintarAlvoAtual){
+      pintarAcertosCount++;
+      pintarAcertosEl.textContent = pintarAcertosCount;
+      tocarAcerto();
+      mostrarFeedbackPintar('✅');
+    } else {
+      tocarErro();
+      mostrarFeedbackPintar('❌');
+    }
+    setTimeout(avancarPintar, 1100);
+  });
+
+  document.getElementById('btn-modo-pintar').addEventListener('click', iniciarModoPintar);
+  document.getElementById('btn-voltar-menu-pintar').addEventListener('click', irParaMenu);
+  document.getElementById('btn-menu-pintar-fim').addEventListener('click', irParaMenu);
+  document.getElementById('btn-pintar-de-novo').addEventListener('click', iniciarModoPintar);
 
   // Registro do Service Worker (PWA)
   if('serviceWorker' in navigator){
