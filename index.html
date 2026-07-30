@@ -1206,11 +1206,12 @@
   function iniciarModoArrastar(){
     TEMPO_POR_PERGUNTA = 15000;
     const paisesContinente = PAISES.filter(p=>p.continente===continenteAtual);
-    if(paisesContinente.length < 4){ irParaMenu(); return; }
+    if(paisesContinente.length < 2){ irParaMenu(); return; }
     const embaralhados = embaralhar(paisesContinente);
-    const numRodadas = Math.max(1, Math.min(2, Math.floor(embaralhados.length/4)));
+    const tamanhoGrupo = Math.min(4, paisesContinente.length);
+    const numRodadas = Math.max(1, Math.floor(embaralhados.length/tamanhoGrupo));
     const grupos = [];
-    for(let i=0;i<numRodadas;i++) grupos.push(embaralhados.slice(i*4, i*4+4));
+    for(let i=0;i<numRodadas;i++) grupos.push(embaralhados.slice(i*tamanhoGrupo, i*tamanhoGrupo+tamanhoGrupo));
     const perguntas = grupos.map(grupo => ({
       tipo:'arrastar', enunciado:'Arraste cada nome até a posição correta no mapa:', paisesRodada:grupo
     }));
