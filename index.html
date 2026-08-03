@@ -1516,6 +1516,29 @@
     return [gx, gy];
   }
 
+  // Chile é uma faixa muito fina nesse mapa — pontos próximos da linha central dele
+  // recebem um bônus extra de reconhecimento, pra compensar a dificuldade de acertar
+  // um alvo tão estreito num toque de tela.
+  const CHILE_LINHA_CENTRAL = [
+    [240,460],[238,490],[235,520],[230,550],[228,570],[229,600],[232,620],
+    [234,645],[238,670],[241,695],[245,720],[250,745],[255,770],[257,795],
+    [258,820],[257,845],[255,870],[252,895],[248,920],[244,945],[240,970],
+    [237,990],[235,1010],[233,1030],[232,1050],[230,1070]
+  ];
+  function distanciaAteLinhaChile(px, py){
+    let dmin = Infinity;
+    for(let i=0; i<CHILE_LINHA_CENTRAL.length-1; i++){
+      const [x1,y1] = CHILE_LINHA_CENTRAL[i], [x2,y2] = CHILE_LINHA_CENTRAL[i+1];
+      const dx=x2-x1, dy=y2-y1;
+      const comp2 = dx*dx+dy*dy;
+      const t = comp2===0 ? 0 : Math.max(0, Math.min(1, ((px-x1)*dx+(py-y1)*dy)/comp2));
+      const cx=x1+t*dx, cy=y1+t*dy;
+      const d = Math.hypot(px-cx, py-cy);
+      if(d<dmin) dmin = d;
+    }
+    return dmin;
+  }
+
   function paisNoPontoGabarito(gx, gy){
     const RAIO = 4, PASSO = 2;
     const pesos = {};
@@ -1530,6 +1553,9 @@
           pesos[nome] = (pesos[nome]||0) + peso;
         }
       }
+    }
+    if(distanciaAteLinhaChile(gx, gy) < 40){
+      pesos['Chile'] = (pesos['Chile']||0) + 5;
     }
     let melhorNome = null, melhorPeso = 0;
     Object.keys(pesos).forEach(nome => {
