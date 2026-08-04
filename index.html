@@ -411,7 +411,6 @@
   <button class="item-sidebar" id="nav-continentes">🗺️ Localizar Continentes</button>
   <button class="item-sidebar" id="nav-vf">✅ Verdadeiro ou Falso</button>
   <button class="item-sidebar" id="nav-relampago">⚡ Quiz Relâmpago</button>
-  <button class="item-sidebar" id="nav-pintar">🎨 Pinte o Mapa</button>
 </nav>
 
 <div class="app">
@@ -491,11 +490,6 @@
         <span class="emoji-desafio">⚡</span>
         <div class="nome-desafio">Quiz Relâmpago</div>
         <div class="desc-desafio">Perguntas de todas as categorias, com tempo reduzido para responder.</div>
-      </button>
-      <button class="card-desafio" id="btn-modo-pintar">
-        <span class="emoji-desafio">🎨</span>
-        <div class="nome-desafio">Pinte o Mapa</div>
-        <div class="desc-desafio">Clique no país certo do mapa da América do Sul e pinte-o da cor pedida.</div>
       </button>
     </div>
   </section>
@@ -1664,7 +1658,6 @@
     setTimeout(avancarPintar, 1100);
   });
 
-  document.getElementById('btn-modo-pintar').addEventListener('click', iniciarModoPintar);
   document.getElementById('btn-voltar-menu-pintar').addEventListener('click', irParaMenu);
   document.getElementById('btn-menu-pintar-fim').addEventListener('click', irParaMenu);
   document.getElementById('btn-pintar-de-novo').addEventListener('click', iniciarModoPintar);
@@ -1703,7 +1696,6 @@
     modoAtual='vf'; esconderTodasAsTelas(); document.getElementById('tela-categoria-vf').classList.remove('escondido');
   }));
   document.getElementById('nav-relampago').addEventListener('click', () => navegarPara(() => { modoAtual='relampago'; iniciarModoRelampago(); }));
-  document.getElementById('nav-pintar').addEventListener('click', () => navegarPara(iniciarModoPintar));
 
   // Registro do Service Worker (PWA)
   if('serviceWorker' in navigator){
